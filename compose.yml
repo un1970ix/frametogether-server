@@ -1,0 +1,15 @@
+name: frametogether
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${PORT:-47642}:${PORT:-47642}"
+    environment:
+      - PORT=${PORT:-47642}
+      - RUST_LOG=${RUST_LOG:-info}
+      - MAX_ROOMS=${MAX_ROOMS:-1000}
+      - RATE_LIMIT_PER_SECOND=${RATE_LIMIT_PER_SECOND:-100}
