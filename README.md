@@ -26,7 +26,7 @@ FrameTogether is an independent project and is not affiliated with, endorsed by,
 
 ## Upgrading to 0.2
 
-Room ids are now 10 characters instead of 6, configurable via `ROOM_ID_LENGTH` with a minimum of 6. Update the extension alongside the server, or set `ROOM_ID_LENGTH=6` during a transition.
+Room IDs are now 10 characters instead of 6, configurable via `ROOM_ID_LENGTH` with a minimum of 6. Update the extension alongside the server, or set `ROOM_ID_LENGTH=6` during a transition.
 
 ## Quick Start
 
@@ -79,7 +79,7 @@ Configuration via environment variables:
 | `MAX_PARTICIPANTS_PER_ROOM` | 32 | Maximum participants in one room. |
 | `IDLE_TIMEOUT_SECONDS` | 90 | Disconnect a client that sends nothing for this long. |
 | `MAX_MESSAGE_BYTES` | 8192 | Largest accepted client message. |
-| `ROOM_ID_LENGTH` | 10 | Length of generated room ids. Minimum 6. |
+| `ROOM_ID_LENGTH` | 10 | Length of generated room IDs. Minimum 6. |
 | `TRUSTED_PROXIES` | *EMPTY* | Addresses or CIDR ranges whose forwarding headers are believed. See below. |
 | `ALLOWED_ORIGINS` | *EMPTY* | Extra `Origin` values allowed to open a socket. See below. |
 | `RUST_LOG` | info | Logging level options are debug, info, warn, or error. |
@@ -204,11 +204,11 @@ Creating a room already puts you in it, so the server sends `RoomCreated` **and*
 
 | Message | Cause |
 |---------|-------|
-| `Room not found` | No room exists with that id. |
+| `Room not found` | No room exists with that ID. |
 | `Room is full` | The room already holds `MAX_PARTICIPANTS_PER_ROOM` participants. |
 | `Too many rooms` | The server already holds `MAX_ROOMS` rooms. |
 | `Not authorized` | A `State` message from a client that is not the host of its room. |
-| `Invalid request` | A malformed field, such as a `time` that is negative, not finite, or beyond `MAX_PLAYBACK_SECONDS`, or a room id that is empty or longer than 64 characters. |
+| `Invalid request` | A malformed field, such as a `time` that is negative, not finite, or beyond `MAX_PLAYBACK_SECONDS`, or a room ID that is empty or longer than 64 characters. |
 | `Invalid message format` | The payload is not valid JSON, has an unknown `type`, or carries a field the message does not define. |
 | `Rate limit exceeded` | More than `RATE_LIMIT_PER_SECOND` messages from one client address. |
 | `Message too large` | The payload exceeds `MAX_MESSAGE_BYTES`. |
@@ -227,7 +227,7 @@ The server maintains all state in memory:
 
 - Rate limiting keyed on the verified TCP peer address. Forwarding headers are ignored unless the peer is a configured trusted proxy, so a client cannot choose its own bucket.
 - `Origin` checks on the WebSocket handshake, which block cross-site WebSocket hijacking.
-- Schema-validated messages: unknown fields are rejected, room ids are length-bounded, and non-finite or out-of-range playback times are refused rather than fanned out.
+- Schema-validated messages: unknown fields are rejected, room IDs are length-bounded, and non-finite or out-of-range playback times are refused rather than fanned out.
 - Bounded everything: concurrent rooms, connections overall and per address, participants per room, message size, per-client send queue, and an idle timeout. Rate limiter state is evicted on a timer rather than kept forever.
 - A client that stops reading is disconnected instead of being allowed to queue messages without limit.
 - Runs as a non-root user in Docker, read-only, with all capabilities dropped.
