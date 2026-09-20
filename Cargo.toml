@@ -1,7 +1,8 @@
 [package]
 name = "frametogether-server"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
+rust-version = "1.88"
 authors = ["Bedir Ekim <root@un1970ix.com>"]
 description = "Sync video playback with friends!"
 readme = "README.md"
@@ -17,14 +18,14 @@ incremental = false
 lto = "fat"
 opt-level = 3
 overflow-checks = true
-panic = "abort"
+panic = "unwind"
 
 [profile.dev]
 debug = true
 opt-level = 0
 
 [dependencies]
-anyhow = "1.0"
+anyhow = "1.0.104"
 axum = { version = "0.8", default-features = false, features = [
     "http1",
     "tokio",
@@ -38,11 +39,7 @@ governor = { version = "0.10", default-features = false, features = [
     "std",
     "dashmap",
 ] }
-nanoid = "0.4"
-prometheus = { version = "0.14", default-features = false, features = [
-    "process",
-], optional = true }
-rand = "0.9"
+rand = "0.9.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
@@ -54,7 +51,6 @@ tokio = { version = "1.47", features = [
     "sync",
     "signal",
 ] }
-tower = { version = "0.5", features = ["timeout", "limit"] }
 tower-http = { version = "0.6", default-features = false, features = [
     "cors",
     "trace",
@@ -66,7 +62,3 @@ tracing-subscriber = { version = "0.3", default-features = false, features = [
     "std",
     "ansi",
 ] }
-
-[features]
-default = ["metrics"]
-metrics = ["prometheus"]
