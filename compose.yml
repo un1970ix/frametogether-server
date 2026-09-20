@@ -1,15 +1,34 @@
-name: frametogether
+name: frametogether-server
 
 services:
-  server:
+  frametogether-server:
     build:
       context: .
       dockerfile: Dockerfile
+    image: frametogether-server
+    container_name: frametogether-server
     restart: unless-stopped
     ports:
-      - "${PORT:-47642}:${PORT:-47642}"
+      - "127.0.0.1:${PORT:-47642}:${PORT:-47642}"
     environment:
       - PORT=${PORT:-47642}
       - RUST_LOG=${RUST_LOG:-info}
       - MAX_ROOMS=${MAX_ROOMS:-1000}
-      - RATE_LIMIT_PER_SECOND=${RATE_LIMIT_PER_SECOND:-100}
+      - RATE_LIMIT_PER_SECOND=${RATE_LIMIT_PER_SECOND:-30}
+      - MAX_CONNECTIONS=${MAX_CONNECTIONS:-10000}
+      - MAX_CONNECTIONS_PER_IP=${MAX_CONNECTIONS_PER_IP:-20}
+      - MAX_PARTICIPANTS_PER_ROOM=${MAX_PARTICIPANTS_PER_ROOM:-32}
+      - IDLE_TIMEOUT_SECONDS=${IDLE_TIMEOUT_SECONDS:-90}
+      - TRUSTED_PROXIES=${TRUSTED_PROXIES:-}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:${PORT:-47642}/health"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
