@@ -1,6 +1,6 @@
 [package]
 name = "frametogether-server"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 rust-version = "1.88"
 authors = ["Bedir Ekim <root@un1970ix.com>"]
@@ -39,7 +39,7 @@ governor = { version = "0.10", default-features = false, features = [
     "std",
     "dashmap",
 ] }
-rand = "0.9.3"
+rand = "0.10.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
@@ -51,7 +51,7 @@ tokio = { version = "1.47", features = [
     "sync",
     "signal",
 ] }
-tower-http = { version = "0.6", default-features = false, features = [
+tower-http = { version = "0.7", default-features = false, features = [
     "cors",
     "trace",
 ] }
