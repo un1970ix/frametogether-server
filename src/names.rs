@@ -1,4 +1,5 @@
 use rand::prelude::*;
+use std::collections::HashSet;
 
 const ADJECTIVES: &[&str] = &[
     "Happy",
@@ -39,19 +40,34 @@ const ANIMALS: &[&str] = &[
     "Penguin", "Giraffe", "Zebra", "Elephant", "Rhino", "Hippo", "Cheetah", "Jaguar", "Lynx",
 ];
 
-pub fn generate_unique_name(used_names: &[String]) -> String {
+const ID_ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
+
+pub fn generate_room_id(len: usize) -> String {
     let mut rng = rand::rng();
-    let mut attempts = 0;
+    (0..len)
+        .map(|_| *ID_ALPHABET.choose(&mut rng).expect("alphabet is non-empty") as char)
+        .collect()
+}
 
-    loop {
-        let adj = ADJECTIVES.choose(&mut rng).unwrap();
-        let animal = ANIMALS.choose(&mut rng).unwrap();
-        let name = format!("{adj} {animal}");
+pub fn generate_unique_name(used_names: &HashSet<String>) -> String {
+    let mut rng = rand::rng();
 
-        if !used_names.contains(&name) || attempts > 100 {
+    for _ in 0..64 {
+        let name = random_name(&mut rng);
+        if !used_names.contains(&name) {
             return name;
         }
-
-        attempts += 1;
     }
+
+    let base = random_name(&mut rng);
+    (2..=used_names.len() + 2)
+        .map(|n| format!("{base} {n}"))
+        .find(|name| !used_names.contains(name))
+        .unwrap_or(base)
+}
+
+fn random_name(rng: &mut impl Rng) -> String {
+    let adj = ADJECTIVES.choose(rng).expect("non-empty");
+    let animal = ANIMALS.choose(rng).expect("non-empty");
+    format!("{adj} {animal}")
 }
