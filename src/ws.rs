@@ -6,152 +6,144 @@
  * You should have received a copy of the GNU Affero General Public License along with FrameTogether Server. If not, see <https://www.gnu.org/licenses/>.
 **/
 use crate::{
-    server::SyncServer,
+    config::TrustedProxies,
+    server::{ConnectionSlot, SEND_QUEUE_DEPTH, SyncServer},
     types::{ClientMessage, ServerMessage},
 };
 use axum::{
-    extract::{State, ws::WebSocketUpgrade},
-    http::{HeaderMap, header},
-    response::Response,
+    extract::{
+        ConnectInfo, State,
+        ws::{Message, WebSocket, WebSocketUpgrade},
+    },
+    http::{HeaderMap, StatusCode, header},
+    response::{IntoResponse, Response},
 };
 use futures_util::{SinkExt, StreamExt};
-use std::net::IpAddr;
-use tokio::sync::mpsc;
-use tracing::{debug, error, info};
+use std::{
+    net::{IpAddr, SocketAddr},
+    sync::Arc,
+};
+use tokio::sync::{Notify, mpsc};
+use tracing::{debug, error, trace, warn};
+
+const FORWARDED_HEADERS: &[&str] = &["cf-connecting-ip", "x-real-ip", "true-client-ip"];
 
 pub async fn websocket_handler(
     ws: WebSocketUpgrade,
     State(server): State<SyncServer>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
     headers: HeaderMap,
 ) -> Response {
-    let client_ip = get_real_ip(&headers);
-    ws.on_upgrade(move |socket| handle_socket(socket, server, client_ip))
-}
-
-fn get_real_ip(headers: &HeaderMap) -> IpAddr {
-    let header_names = [
-        "cf-connecting-ip",
-        "x-real-ip",
-        "x-forwarded-for",
-        "x-client-ip",
-        "true-client-ip",
-        "forwarded",
-    ];
-
-    for header_name in &header_names {
-        if let Some(header_value) = headers.get(*header_name) {
-            if let Ok(header_str) = header_value.to_str() {
-                let ip_str = if header_name == &"x-forwarded-for" {
-                    header_str.split(',').next().unwrap_or(header_str).trim()
-                } else if header_name == &"forwarded" {
-                    parse_forwarded_for(header_str).unwrap_or(header_str)
-                } else {
-                    header_str.trim()
-                };
-
-                if let Ok(ip) = ip_str.parse::<IpAddr>() {
-                    debug!("Got real IP {} from header {}", ip, header_name);
-                    return ip;
-                }
-            }
-        }
+    let origin = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok());
+    if !server.config.allowed_origins.allows(origin) {
+        warn!("rejected websocket from disallowed origin {origin:?}");
+        return (StatusCode::FORBIDDEN, "Origin not allowed").into_response();
     }
 
-    if let Some(host_header) = headers.get(header::HOST) {
-        if let Ok(host) = host_header.to_str() {
-            if host.starts_with("localhost") || host.starts_with("127.0.0.1") {
-                debug!("Local connection detected");
-                return "127.0.0.1".parse().unwrap();
-            }
-        }
-    }
+    let client_ip = client_ip(peer, &headers, &server.config.trusted_proxies);
 
-    debug!("No proxy headers found, using default IP");
-    "127.0.0.1".parse().unwrap()
+    let Some(slot) = server.try_acquire_slot(client_ip) else {
+        return (StatusCode::SERVICE_UNAVAILABLE, "Too many connections").into_response();
+    };
+
+    ws.max_message_size(server.config.max_message_bytes)
+        .max_frame_size(server.config.max_message_bytes)
+        .on_upgrade(move |socket| handle_socket(socket, server, slot))
 }
 
-fn parse_forwarded_for(forwarded: &str) -> Option<&str> {
-    for part in forwarded.split(';') {
-        let part = part.trim();
-        if let Some(value) = part.strip_prefix("for=") {
-            let value = value.trim_matches('"');
-            if let Some(ip) = value.split(':').next() {
-                return Some(ip);
-            }
-            return Some(value);
-        }
+fn client_ip(peer: SocketAddr, headers: &HeaderMap, trusted: &TrustedProxies) -> IpAddr {
+    let peer_ip = peer.ip();
+    if trusted.is_empty() || !trusted.contains(&peer_ip) {
+        return peer_ip;
     }
-    None
+
+    if let Some(value) = headers.get("x-forwarded-for").and_then(|v| v.to_str().ok())
+        && let Some(ip) = value
+            .rsplit(',')
+            .filter_map(|part| part.trim().parse::<IpAddr>().ok())
+            .find(|ip| !trusted.contains(ip))
+    {
+        return ip;
+    }
+
+    FORWARDED_HEADERS
+        .iter()
+        .filter_map(|name| headers.get(*name)?.to_str().ok()?.trim().parse().ok())
+        .next()
+        .unwrap_or(peer_ip)
 }
 
-async fn handle_socket(
-    socket: axum::extract::ws::WebSocket,
-    server: SyncServer,
-    client_ip: IpAddr,
-) {
+async fn handle_socket(socket: WebSocket, server: SyncServer, slot: ConnectionSlot) {
+    let client_ip = slot.ip();
     let conn_id = server.next_connection_id();
-    let (tx, mut rx) = mpsc::unbounded_channel();
+    let (tx, mut rx) = mpsc::channel::<ServerMessage>(SEND_QUEUE_DEPTH);
+    let shutdown = Arc::new(Notify::new());
 
-    server.add_connection(conn_id, client_ip, tx);
+    server.add_connection(conn_id, tx, shutdown.clone());
 
     let (mut sender, mut receiver) = socket.split();
 
     let send_task = tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
-            if let Ok(text) = serde_json::to_string(&msg) {
-                if sender
-                    .send(axum::extract::ws::Message::Text(text.into()))
-                    .await
-                    .is_err()
-                {
-                    break;
+            match serde_json::to_string(&msg) {
+                Ok(text) => {
+                    if sender.send(Message::Text(text.into())).await.is_err() {
+                        break;
+                    }
                 }
+                Err(e) => error!("failed to serialize server message: {e}"),
             }
         }
+        let _ = sender.close().await;
     });
 
-    while let Some(msg) = receiver.next().await {
-        if let Ok(msg) = msg {
-            match msg {
-                axum::extract::ws::Message::Text(text) => {
-                    if server.check_rate_limit(&client_ip).is_err() {
-                        if let Some(conn) = server.connections.get(&conn_id) {
-                            let _ = conn.tx.send(ServerMessage::Error {
-                                message: "Rate limit exceeded".to_string(),
-                            });
-                        }
-                        continue;
-                    }
+    let idle_timeout = server.config.idle_timeout;
+    let max_bytes = server.config.max_message_bytes;
 
-                    match serde_json::from_str::<ClientMessage>(&text) {
-                        Ok(client_msg) => {
-                            if let Err(e) = server.handle_message(conn_id, client_msg).await {
-                                if let Some(conn) = server.connections.get(&conn_id) {
-                                    let _ = conn.tx.send(ServerMessage::Error {
-                                        message: e.to_string(),
-                                    });
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            error!("Failed to parse message: {}", e);
-                            if let Some(conn) = server.connections.get(&conn_id) {
-                                let _ = conn.tx.send(ServerMessage::Error {
-                                    message: "Invalid message format".to_string(),
-                                });
-                            }
-                        }
-                    }
-                }
-                axum::extract::ws::Message::Close(_) => break,
-                _ => {}
+    loop {
+        let incoming = tokio::select! {
+            biased;
+            _ = shutdown.notified() => break,
+            frame = tokio::time::timeout(idle_timeout, receiver.next()) => frame,
+        };
+
+        let text = match incoming {
+            Err(_) => {
+                debug!("connection {conn_id} idle for {idle_timeout:?}; closing");
+                break;
             }
-        } else {
-            break;
+            Ok(None) | Ok(Some(Ok(Message::Close(_)))) => break,
+            Ok(Some(Err(e))) => {
+                trace!("connection {conn_id} read error: {e}");
+                break;
+            }
+            Ok(Some(Ok(Message::Text(text)))) => text,
+            Ok(Some(Ok(_))) => continue,
+        };
+
+        if text.len() > max_bytes {
+            server.send_error(conn_id, "Message too large");
+            continue;
+        }
+        if server.check_rate_limit(&client_ip).is_err() {
+            server.send_error(conn_id, "Rate limit exceeded");
+            continue;
+        }
+
+        match serde_json::from_str::<ClientMessage>(&text) {
+            Ok(msg) => {
+                if let Err(e) = server.handle_message(conn_id, msg) {
+                    server.send_error(conn_id, &e.to_string());
+                }
+            }
+            Err(e) => {
+                trace!("connection {conn_id} sent unparseable message: {e}");
+                server.send_error(conn_id, "Invalid message format");
+            }
         }
     }
 
     send_task.abort();
     server.remove_connection(conn_id);
-    info!("WebSocket {} disconnected", conn_id);
+    debug!("websocket {conn_id} disconnected");
 }

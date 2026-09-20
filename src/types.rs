@@ -1,11 +1,16 @@
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc;
+use std::collections::HashSet;
+use std::sync::Arc;
+use tokio::sync::{Notify, mpsc};
 
 pub type ConnectionId = u64;
 pub type RoomId = String;
 
+pub const MAX_ROOM_ID_LEN: usize = 64;
+pub const MAX_PLAYBACK_SECONDS: f64 = 86_400.0;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type")]
+#[serde(tag = "type", deny_unknown_fields)]
 pub enum ClientMessage {
     Create,
     Join { room_id: RoomId },
@@ -36,6 +41,9 @@ pub enum ServerMessage {
     UserLeft {
         user_name: String,
     },
+    HostChanged {
+        user_name: String,
+    },
     Error {
         message: String,
     },
@@ -47,7 +55,7 @@ pub struct Participant {
     pub is_host: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct VideoState {
     pub time: f64,
     pub paused: bool,
@@ -55,9 +63,10 @@ pub struct VideoState {
 
 #[derive(Debug)]
 pub struct Connection {
-    pub tx: mpsc::UnboundedSender<ServerMessage>,
+    pub tx: mpsc::Sender<ServerMessage>,
     pub room_id: Option<RoomId>,
     pub name: Option<String>,
+    pub shutdown: Arc<Notify>,
 }
 
 #[derive(Debug)]
@@ -65,11 +74,11 @@ pub struct Room {
     pub host: ConnectionId,
     pub connections: Vec<ConnectionId>,
     pub state: VideoState,
-    pub used_names: Vec<String>,
+    pub used_names: HashSet<String>,
 }
 
 impl Room {
-    pub fn new(_id: RoomId, host: ConnectionId) -> Self {
+    pub fn new(host: ConnectionId) -> Self {
         Self {
             host,
             connections: vec![host],
@@ -77,7 +86,7 @@ impl Room {
                 time: 0.0,
                 paused: true,
             },
-            used_names: Vec::new(),
+            used_names: HashSet::new(),
         }
     }
 }
