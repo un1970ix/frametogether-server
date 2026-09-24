@@ -37,13 +37,13 @@ pub async fn websocket_handler(
     let origin = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok());
     if !server.config.allowed_origins.allows(origin) {
         warn!("rejected websocket from disallowed origin {origin:?}");
-        return (StatusCode::FORBIDDEN, "Origin not allowed").into_response();
+        return (StatusCode::FORBIDDEN, "Origin not allowed.").into_response();
     }
 
     let client_ip = client_ip(peer, &headers, &server.config.trusted_proxies);
 
     let Some(slot) = server.try_acquire_slot(client_ip) else {
-        return (StatusCode::SERVICE_UNAVAILABLE, "Too many connections").into_response();
+        return (StatusCode::SERVICE_UNAVAILABLE, "Too many connections.").into_response();
     };
 
     ws.max_message_size(server.config.max_message_bytes)
@@ -122,11 +122,11 @@ async fn handle_socket(socket: WebSocket, server: SyncServer, slot: ConnectionSl
         };
 
         if text.len() > max_bytes {
-            server.send_error(conn_id, "Message too large");
+            server.send_error(conn_id, "Message too large.");
             continue;
         }
         if server.check_rate_limit(&client_ip).is_err() {
-            server.send_error(conn_id, "Rate limit exceeded");
+            server.send_error(conn_id, "Rate limit exceeded.");
             continue;
         }
 
@@ -138,7 +138,7 @@ async fn handle_socket(socket: WebSocket, server: SyncServer, slot: ConnectionSl
             }
             Err(e) => {
                 trace!("connection {conn_id} sent unparseable message: {e}");
-                server.send_error(conn_id, "Invalid message format");
+                server.send_error(conn_id, "Invalid message format.");
             }
         }
     }
