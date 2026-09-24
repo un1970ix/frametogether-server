@@ -80,7 +80,8 @@ impl SyncServer {
 
         let janitor = server.clone();
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(CLEANUP_INTERVAL);
+            let start = tokio::time::Instant::now() + CLEANUP_INTERVAL;
+            let mut interval = tokio::time::interval_at(start, CLEANUP_INTERVAL);
             loop {
                 interval.tick().await;
                 janitor.cleanup();
