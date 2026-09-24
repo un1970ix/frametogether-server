@@ -26,7 +26,7 @@ FrameTogether is an independent project and is not affiliated with, endorsed by,
 
 ## Upgrading to 0.2
 
-Room IDs are now 10 characters instead of 6, configurable via `ROOM_ID_LENGTH` with a minimum of 6. Update the extension alongside the server, or set `ROOM_ID_LENGTH=6` during a transition.
+Room IDs are now 10 characters instead of 6, configurable via `ROOM_ID_LENGTH` between 6 and 64. Update the extension alongside the server, or set `ROOM_ID_LENGTH=6` during a transition.
 
 ## Quick Start
 
@@ -76,10 +76,10 @@ Configuration via environment variables:
 | `RATE_LIMIT_PER_SECOND` | 30 | Messages per second per client address. |
 | `MAX_CONNECTIONS` | 10000 | Maximum concurrent connections. |
 | `MAX_CONNECTIONS_PER_IP` | 20 | Maximum concurrent connections per address. |
-| `MAX_PARTICIPANTS_PER_ROOM` | 32 | Maximum participants in one room. |
+| `MAX_PARTICIPANTS_PER_ROOM` | 32 | Maximum participants in one room. At most 256. |
 | `IDLE_TIMEOUT_SECONDS` | 90 | Disconnect a client that sends nothing for this long. |
 | `MAX_MESSAGE_BYTES` | 8192 | Largest accepted client message. |
-| `ROOM_ID_LENGTH` | 10 | Length of generated room IDs. Minimum 6. |
+| `ROOM_ID_LENGTH` | 10 | Length of generated room IDs, between 6 and 64. |
 | `TRUSTED_PROXIES` | *EMPTY* | Addresses or CIDR ranges whose forwarding headers are believed. See below. |
 | `ALLOWED_ORIGINS` | *EMPTY* | Extra `Origin` values allowed to open a socket. See below. |
 | `RUST_LOG` | info | Logging level options are debug, info, warn, or error. |

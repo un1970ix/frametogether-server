@@ -5,12 +5,15 @@
  * FrameTogether Server is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
  * You should have received a copy of the GNU Affero General Public License along with FrameTogether Server. If not, see <https://www.gnu.org/licenses/>.
 **/
+use crate::types::MAX_ROOM_ID_LEN;
 use anyhow::{Context, Result, bail};
 use std::{
     net::{IpAddr, SocketAddr},
     str::FromStr,
     time::Duration,
 };
+
+const MAX_PARTICIPANTS_PER_ROOM: usize = 256;
 
 const EXTENSION_SCHEMES: &[&str] = &[
     "chrome-extension://",
@@ -91,8 +94,11 @@ impl Config {
                 bail!("{name} must be at least 1.");
             }
         }
-        if self.room_id_length < 6 {
-            bail!("ROOM_ID_LENGTH must be at least 6.");
+        if self.max_participants_per_room > MAX_PARTICIPANTS_PER_ROOM {
+            bail!("MAX_PARTICIPANTS_PER_ROOM must be at most {MAX_PARTICIPANTS_PER_ROOM}.");
+        }
+        if !(6..=MAX_ROOM_ID_LEN).contains(&self.room_id_length) {
+            bail!("ROOM_ID_LENGTH must be between 6 and {MAX_ROOM_ID_LEN}.");
         }
         if self.max_message_bytes < 64 {
             bail!("MAX_MESSAGE_BYTES must be at least 64.");
@@ -299,11 +305,24 @@ mod tests {
     }
 
     #[test]
-    fn short_room_ids_are_rejected() {
+    fn out_of_range_room_id_lengths_are_rejected() {
         let mut c = base();
         c.room_id_length = 4;
         assert!(c.validate().is_err());
         c.room_id_length = 6;
+        assert!(c.validate().is_ok());
+        c.room_id_length = 64;
+        assert!(c.validate().is_ok());
+        c.room_id_length = 65;
+        assert!(c.validate().is_err());
+    }
+
+    #[test]
+    fn oversized_rooms_are_rejected() {
+        let mut c = base();
+        c.max_participants_per_room = 257;
+        assert!(c.validate().is_err());
+        c.max_participants_per_room = 256;
         assert!(c.validate().is_ok());
     }
 
