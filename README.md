@@ -98,7 +98,7 @@ Your proxy **must** overwrite `X-Forwarded-For` rather than append to a client-s
 
 ### Origin Checks
 
-Browsers always attach an `Origin` header to a WebSocket handshake. Extension origins such as `chrome-extension://`, `moz-extension://` and `safari-web-extension://` are always allowed, and so are clients that send no `Origin` at all, which means anything that is not a browser. Any other web origin is rejected unless it is listed in `ALLOWED_ORIGINS`. This stops an arbitrary website from opening sockets on its visitors' behalf. Setting `ALLOWED_ORIGINS=*` disables the check.
+Browsers always attach an `Origin` header to a WebSocket handshake. Extension origins such as `chrome-extension://`, `moz-extension://`, and `safari-web-extension://` are always allowed, and so are clients that send no `Origin` at all, which means anything that is not a browser. Any other web origin is rejected unless it is listed in `ALLOWED_ORIGINS`. This stops an arbitrary website from opening sockets on its visitors' behalf. Setting `ALLOWED_ORIGINS=*` disables the check.
 
 ## Protocol
 
@@ -208,12 +208,11 @@ Creating a room already puts you in it, so the server sends `RoomCreated` **and*
 | `Room is full.` | The room already holds `MAX_PARTICIPANTS_PER_ROOM` participants. |
 | `Too many rooms.` | The server already holds `MAX_ROOMS` rooms. |
 | `Not authorized.` | A `State` message from a client that is not the host of its room. |
-| `Invalid request.` | A malformed field, such as a `time` that is negative, not finite, or beyond `MAX_PLAYBACK_SECONDS`, or a room ID that is empty or longer than 64 characters. |
+| `Invalid request.` | A malformed field, such as a `time` that is negative, not finite, or beyond 24 hours, or a room ID that is empty or longer than 64 characters. |
 | `Invalid message format.` | The payload is not valid JSON, has an unknown `type`, or carries a field the message does not define. |
 | `Rate limit exceeded.` | More than `RATE_LIMIT_PER_SECOND` messages from one client address. |
-| `Message too large.` | The payload exceeds `MAX_MESSAGE_BYTES`. |
 
-Messages are validated strictly, so an unknown field causes the whole message to be rejected rather than ignored.
+Messages are validated strictly, so an unknown field causes the whole message to be rejected rather than ignored. A message larger than `MAX_MESSAGE_BYTES` closes the connection instead of returning an error.
 
 ## Architecture
 
@@ -286,8 +285,6 @@ location /sync {
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
     proxy_set_header X-Real-IP $remote_addr;
-    # Overwrite rather than append: $proxy_add_x_forwarded_for would preserve a
-    # client-supplied value and let callers forge their own address.
     proxy_set_header X-Forwarded-For $remote_addr;
 }
 ```
