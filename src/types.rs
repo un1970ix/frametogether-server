@@ -12,11 +12,11 @@ pub const MAX_PLAYBACK_SECONDS: f64 = 86_400.0;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum ClientMessage {
-    Create,
+    Create {},
     Join { room_id: RoomId },
-    Leave,
+    Leave {},
     State { time: f64, paused: bool },
-    Heartbeat,
+    Heartbeat {},
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -87,6 +87,38 @@ impl Room {
                 paused: true,
             },
             used_names: HashSet::new(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn documented_client_messages_parse() {
+        for raw in [
+            r#"{"type":"Create"}"#,
+            r#"{"type":"Join","room_id":"kWwlQxFUDX"}"#,
+            r#"{"type":"Leave"}"#,
+            r#"{"type":"State","time":120.5,"paused":false}"#,
+            r#"{"type":"Heartbeat"}"#,
+        ] {
+            assert!(serde_json::from_str::<ClientMessage>(raw).is_ok(), "{raw}");
+        }
+    }
+
+    #[test]
+    fn unknown_fields_are_rejected_on_every_message() {
+        for raw in [
+            r#"{"type":"Create","x":1}"#,
+            r#"{"type":"Join","room_id":"kWwlQxFUDX","x":1}"#,
+            r#"{"type":"Leave","x":1}"#,
+            r#"{"type":"State","time":1.0,"paused":true,"x":1}"#,
+            r#"{"type":"Heartbeat","x":1}"#,
+            r#"{"type":"Nope"}"#,
+        ] {
+            assert!(serde_json::from_str::<ClientMessage>(raw).is_err(), "{raw}");
         }
     }
 }
