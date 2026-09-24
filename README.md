@@ -196,7 +196,7 @@ Creating a room already puts you in it, so the server sends `RoomCreated` **and*
 ```json
 {
   "type": "Error",
-  "message": "Room not found"
+  "message": "Room not found."
 }
 ```
 
@@ -204,14 +204,14 @@ Creating a room already puts you in it, so the server sends `RoomCreated` **and*
 
 | Message | Cause |
 |---------|-------|
-| `Room not found` | No room exists with that ID. |
-| `Room is full` | The room already holds `MAX_PARTICIPANTS_PER_ROOM` participants. |
-| `Too many rooms` | The server already holds `MAX_ROOMS` rooms. |
-| `Not authorized` | A `State` message from a client that is not the host of its room. |
-| `Invalid request` | A malformed field, such as a `time` that is negative, not finite, or beyond `MAX_PLAYBACK_SECONDS`, or a room ID that is empty or longer than 64 characters. |
-| `Invalid message format` | The payload is not valid JSON, has an unknown `type`, or carries a field the message does not define. |
-| `Rate limit exceeded` | More than `RATE_LIMIT_PER_SECOND` messages from one client address. |
-| `Message too large` | The payload exceeds `MAX_MESSAGE_BYTES`. |
+| `Room not found.` | No room exists with that ID. |
+| `Room is full.` | The room already holds `MAX_PARTICIPANTS_PER_ROOM` participants. |
+| `Too many rooms.` | The server already holds `MAX_ROOMS` rooms. |
+| `Not authorized.` | A `State` message from a client that is not the host of its room. |
+| `Invalid request.` | A malformed field, such as a `time` that is negative, not finite, or beyond `MAX_PLAYBACK_SECONDS`, or a room ID that is empty or longer than 64 characters. |
+| `Invalid message format.` | The payload is not valid JSON, has an unknown `type`, or carries a field the message does not define. |
+| `Rate limit exceeded.` | More than `RATE_LIMIT_PER_SECOND` messages from one client address. |
+| `Message too large.` | The payload exceeds `MAX_MESSAGE_BYTES`. |
 
 Messages are validated strictly, so an unknown field causes the whole message to be rejected rather than ignored.
 

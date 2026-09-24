@@ -4,22 +4,22 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum AppError {
-    #[error("Room not found")]
+    #[error("Room not found.")]
     RoomNotFound,
 
-    #[error("Too many rooms")]
+    #[error("Too many rooms.")]
     TooManyRooms,
 
-    #[error("Room is full")]
+    #[error("Room is full.")]
     RoomFull,
 
-    #[error("Rate limit exceeded")]
+    #[error("Rate limit exceeded.")]
     RateLimitExceeded,
 
-    #[error("Not authorized")]
+    #[error("Not authorized.")]
     NotAuthorized,
 
-    #[error("Invalid request")]
+    #[error("Invalid request.")]
     InvalidRequest,
 }
 

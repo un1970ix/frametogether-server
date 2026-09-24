@@ -42,7 +42,7 @@ where
         Ok(raw) => raw
             .trim()
             .parse()
-            .map_err(|e| anyhow::anyhow!("invalid {key}: {e}")),
+            .map_err(|e| anyhow::anyhow!("Invalid {key}: {e}.")),
         Err(_) => Ok(default),
     }
 }
@@ -55,7 +55,7 @@ impl Config {
             .or_else(|_| std::env::var("PORT").map(|p| format!("0.0.0.0:{}", p.trim())))
             .unwrap_or_else(|_| "0.0.0.0:47642".to_string())
             .parse()
-            .context("invalid ADDR/PORT")?;
+            .context("Invalid ADDR or PORT.")?;
 
         let cfg = Config {
             addr,
@@ -88,17 +88,17 @@ impl Config {
         ];
         for (name, value) in limits {
             if value == 0 {
-                bail!("{name} must be >= 1");
+                bail!("{name} must be at least 1.");
             }
         }
         if self.room_id_length < 6 {
-            bail!("ROOM_ID_LENGTH must be >= 6");
+            bail!("ROOM_ID_LENGTH must be at least 6.");
         }
         if self.max_message_bytes < 64 {
-            bail!("MAX_MESSAGE_BYTES must be >= 64");
+            bail!("MAX_MESSAGE_BYTES must be at least 64.");
         }
         if self.idle_timeout.as_secs() < 5 {
-            bail!("IDLE_TIMEOUT_SECONDS must be >= 5");
+            bail!("IDLE_TIMEOUT_SECONDS must be at least 5.");
         }
         Ok(())
     }
@@ -138,16 +138,16 @@ fn parse_cidr(entry: &str) -> Result<(IpAddr, u8)> {
     };
     let ip: IpAddr = ip_part
         .parse()
-        .with_context(|| format!("invalid TRUSTED_PROXIES entry: {entry}"))?;
+        .with_context(|| format!("Invalid TRUSTED_PROXIES entry: {entry}."))?;
     let max = if ip.is_ipv4() { 32 } else { 128 };
     let prefix = match prefix_part {
         Some(p) => p
             .parse()
-            .with_context(|| format!("invalid prefix in TRUSTED_PROXIES: {entry}"))?,
+            .with_context(|| format!("Invalid prefix in TRUSTED_PROXIES: {entry}."))?,
         None => max,
     };
     if prefix > max {
-        bail!("prefix /{prefix} too large for {ip_part}");
+        bail!("Prefix {prefix} is too large for {ip_part}.");
     }
     Ok((ip, prefix))
 }
