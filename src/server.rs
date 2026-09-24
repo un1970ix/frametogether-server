@@ -217,14 +217,14 @@ impl SyncServer {
         msg: ClientMessage,
     ) -> Result<(), AppError> {
         match msg {
-            ClientMessage::Create => self.create_room(conn_id),
+            ClientMessage::Create {} => self.create_room(conn_id),
             ClientMessage::Join { room_id } => self.join_room(conn_id, room_id),
-            ClientMessage::Leave => {
+            ClientMessage::Leave {} => {
                 self.leave_current_room(conn_id);
                 Ok(())
             }
             ClientMessage::State { time, paused } => self.update_state(conn_id, time, paused),
-            ClientMessage::Heartbeat => Ok(()),
+            ClientMessage::Heartbeat {} => Ok(()),
         }
     }
 
@@ -533,14 +533,14 @@ mod tests {
     async fn leave_completes_and_frees_the_room() {
         let s = SyncServer::new(config());
         let (a, _rx) = connect(&s);
-        s.handle_message(a, ClientMessage::Create).unwrap();
+        s.handle_message(a, ClientMessage::Create {}).unwrap();
         assert_eq!(s.room_count(), 1);
 
-        s.handle_message(a, ClientMessage::Leave).unwrap();
+        s.handle_message(a, ClientMessage::Leave {}).unwrap();
         assert_eq!(s.room_count(), 0);
         assert_eq!(s.room_of(a), None);
 
-        s.handle_message(a, ClientMessage::Create).unwrap();
+        s.handle_message(a, ClientMessage::Create {}).unwrap();
         assert_eq!(s.room_count(), 1);
     }
 
@@ -549,7 +549,7 @@ mod tests {
         let s = SyncServer::new(config());
         let (a, _rx) = connect(&s);
         for _ in 0..20 {
-            s.handle_message(a, ClientMessage::Create).unwrap();
+            s.handle_message(a, ClientMessage::Create {}).unwrap();
         }
         assert_eq!(s.room_count(), 1);
 
@@ -561,11 +561,11 @@ mod tests {
     async fn joining_another_room_releases_the_previous_one() {
         let s = SyncServer::new(config());
         let (host, _h) = connect(&s);
-        s.handle_message(host, ClientMessage::Create).unwrap();
+        s.handle_message(host, ClientMessage::Create {}).unwrap();
         let first = s.room_of(host).unwrap();
 
         let (guest, _g) = connect(&s);
-        s.handle_message(guest, ClientMessage::Create).unwrap();
+        s.handle_message(guest, ClientMessage::Create {}).unwrap();
         let second = s.room_of(guest).unwrap();
 
         s.handle_message(
@@ -584,7 +584,7 @@ mod tests {
     async fn rejoining_same_room_does_not_grow_name_table() {
         let s = SyncServer::new(config());
         let (a, _rx) = connect(&s);
-        s.handle_message(a, ClientMessage::Create).unwrap();
+        s.handle_message(a, ClientMessage::Create {}).unwrap();
         let room = s.room_of(a).unwrap();
 
         for _ in 0..500 {
@@ -603,7 +603,7 @@ mod tests {
     async fn names_are_returned_on_leave() {
         let s = SyncServer::new(config());
         let (host, _h) = connect(&s);
-        s.handle_message(host, ClientMessage::Create).unwrap();
+        s.handle_message(host, ClientMessage::Create {}).unwrap();
         let room = s.room_of(host).unwrap();
 
         for _ in 0..50 {
@@ -624,7 +624,7 @@ mod tests {
     async fn room_capacity_is_enforced() {
         let s = SyncServer::new(config());
         let (host, _h) = connect(&s);
-        s.handle_message(host, ClientMessage::Create).unwrap();
+        s.handle_message(host, ClientMessage::Create {}).unwrap();
         let room = s.room_of(host).unwrap();
 
         for _ in 0..3 {
@@ -648,7 +648,7 @@ mod tests {
     async fn only_the_host_may_drive_playback() {
         let s = SyncServer::new(config());
         let (host, _h) = connect(&s);
-        s.handle_message(host, ClientMessage::Create).unwrap();
+        s.handle_message(host, ClientMessage::Create {}).unwrap();
         let room = s.room_of(host).unwrap();
         let (guest, _g) = connect(&s);
         s.handle_message(guest, ClientMessage::Join { room_id: room })
@@ -680,7 +680,7 @@ mod tests {
     async fn nonsense_playback_times_are_rejected() {
         let s = SyncServer::new(config());
         let (host, _h) = connect(&s);
-        s.handle_message(host, ClientMessage::Create).unwrap();
+        s.handle_message(host, ClientMessage::Create {}).unwrap();
 
         for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -1.0, 1e18] {
             assert!(
@@ -713,7 +713,7 @@ mod tests {
     async fn host_is_handed_over_when_the_host_leaves() {
         let s = SyncServer::new(config());
         let (host, _h) = connect(&s);
-        s.handle_message(host, ClientMessage::Create).unwrap();
+        s.handle_message(host, ClientMessage::Create {}).unwrap();
         let room = s.room_of(host).unwrap();
         let (guest, _g) = connect(&s);
         s.handle_message(
@@ -844,16 +844,16 @@ mod tests {
         let mut conns = Vec::new();
         for _ in 0..3 {
             let (c, rx) = connect(&s);
-            s.handle_message(c, ClientMessage::Create).unwrap();
+            s.handle_message(c, ClientMessage::Create {}).unwrap();
             conns.push((c, rx));
         }
         let (extra, _rx) = connect(&s);
         assert!(matches!(
-            s.handle_message(extra, ClientMessage::Create),
+            s.handle_message(extra, ClientMessage::Create {}),
             Err(AppError::TooManyRooms)
         ));
 
         s.remove_connection(conns.pop().unwrap().0);
-        assert!(s.handle_message(extra, ClientMessage::Create).is_ok());
+        assert!(s.handle_message(extra, ClientMessage::Create {}).is_ok());
     }
 }
