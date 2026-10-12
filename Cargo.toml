@@ -2,7 +2,7 @@
 name = "frametogether-server"
 version = "0.2.2"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.95"
 authors = ["Bedir Ekim <root@un1970ix.com>"]
 description = "Sync video playback with friends!"
 readme = "README.md"
