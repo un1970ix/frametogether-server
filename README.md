@@ -58,7 +58,7 @@ cd frametogether-server
 ```
 
 Requirements:
-- Rust 1.88 or later.
+- Rust 1.95 or later.
 
 ```bash
 cargo build --release

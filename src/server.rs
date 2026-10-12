@@ -144,11 +144,11 @@ impl SyncServer {
     }
 
     pub fn try_acquire_slot(&self, ip: IpAddr) -> Option<ConnectionSlot> {
-        let accepted =
-            self.connection_count
-                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| {
-                    (n < self.config.max_connections).then_some(n + 1)
-                });
+        let accepted = self
+            .connection_count
+            .try_update(Ordering::SeqCst, Ordering::SeqCst, |n| {
+                (n < self.config.max_connections).then_some(n + 1)
+            });
         if accepted.is_err() {
             warn!(
                 "global connection limit ({}) reached",
