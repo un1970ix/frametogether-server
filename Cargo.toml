@@ -1,6 +1,6 @@
 [package]
 name = "frametogether-server"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2024"
 rust-version = "1.95"
 authors = ["Bedir Ekim <root@un1970ix.com>"]
