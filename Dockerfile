@@ -1,4 +1,4 @@
-FROM rust:1.98-alpine@sha256:7cc1c22d77d9432f7fe012a70e6d3e555af54c2a6832700ed7d553f1769ae89f AS builder
+FROM rust:1.99.1-alpine@sha256:7e9e2d068a107a2adafd19930011178d14a78326053cd4c3a9f7ad3fd049557d AS builder
 
 RUN apk add --no-cache musl-dev
 
@@ -11,7 +11,7 @@ RUN cargo build --release --locked && rm -rf src
 COPY src ./src
 RUN touch src/main.rs && cargo build --release --locked
 
-FROM alpine:3.22@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8
+FROM alpine:latest@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 
 RUN adduser -D -u 10001 frametogether-server
 
